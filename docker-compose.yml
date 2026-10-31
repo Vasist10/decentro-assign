@@ -1,0 +1,32 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: decentro
+      POSTGRES_USER: decentro
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-decentro}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U decentro -d decentro"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+  api:
+    build: .
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://decentro:${POSTGRES_PASSWORD:-decentro}@db:5432/decentro}
+      APP_ENV: development
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2)"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      db:
+        condition: service_healthy
+volumes:
+  postgres_data:
